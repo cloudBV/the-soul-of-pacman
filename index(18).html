@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Soul of Pac-Man</title>
+<meta name="description" content="A Pygame twist on Pac-Man: you play the ghosts, hunting an AI Pac-Man whose soul jumps between bodies.">
+<style>
+  :root {
+    --bg: #0a0a1e;
+    --panel: #10102a;
+    --panel-2: #181838;
+    --line: #26266a;
+    --wall: #1445c8;
+    --text: #ece9fa;
+    --muted: #9494b8;
+    --pac: #ffe128;
+    --dot: #ffd232;
+    --warn: #ff6464;
+    --blue: #50b4ff;
+    --red: #ff4141;
+    --orange: #ff9b23;
+    --cyan: #32cdff;
+    --pink: #ff78d7;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.65;
+  }
+  a { color: var(--pac); }
+  code, pre, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  code { background: var(--panel-2); padding: 0.1em 0.4em; border-radius: 5px; font-size: 0.9em; }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 0 20px; }
+
+  nav { position: sticky; top: 0; z-index: 10; background: rgba(10,10,30,0.92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+  nav .wrap { display: flex; gap: 18px; padding: 12px 20px; overflow-x: auto; white-space: nowrap; }
+  nav a { color: var(--muted); text-decoration: none; font-size: 0.92rem; }
+  nav a:hover { color: var(--text); }
+
+  header.hero { padding: 60px 0 40px; text-align: center; }
+  .pacrow { display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 22px; }
+  .pac {
+    width: 34px; height: 34px; border-radius: 50%; background: var(--pac);
+    clip-path: polygon(100% 20%, 50% 50%, 100% 80%, 100% 100%, 0 100%, 0 0, 100% 0);
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dot); }
+  .ghost {
+    width: 28px; height: 30px; background: var(--c);
+    border-radius: 14px 14px 3px 3px; position: relative;
+  }
+  .ghost::before, .ghost::after {
+    content: ""; position: absolute; top: 9px; width: 7px; height: 7px;
+    border-radius: 50%; background: #fff; box-shadow: inset 2px 0 0 #14145a;
+  }
+  .ghost::before { left: 5px; } .ghost::after { right: 5px; }
+
+  h1 { font-size: clamp(2.2rem, 6vw, 3.6rem); margin: 0 0 10px; letter-spacing: -0.02em; }
+  h1 span { color: var(--pac); }
+  .tagline { color: var(--muted); font-size: 1.15rem; max-width: 640px; margin: 0 auto 26px; }
+  .badges { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 26px; }
+  .badge { background: var(--panel-2); border: 1px solid var(--line); padding: 4px 12px; border-radius: 999px; font-size: 0.85rem; color: var(--muted); }
+  .cta {
+    display: inline-block; background: var(--pac); color: #1a1500; font-weight: 700;
+    padding: 12px 26px; border-radius: 10px; text-decoration: none; margin-bottom: 34px;
+  }
+  .cta:hover { filter: brightness(1.08); }
+  .shot { display: inline-block; margin: 0; padding: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 20px 60px rgba(20,69,200,0.25); }
+  .shot img { display: block; max-width: 100%; height: auto; border-radius: 8px; }
+  .shot figcaption { color: var(--muted); font-size: 0.82rem; margin-top: 8px; }
+
+  section { padding: 44px 0; border-top: 1px solid var(--line); }
+  h2 { font-size: 1.7rem; margin: 0 0 6px; }
+  h2 + p.lead { color: var(--muted); margin-top: 0; }
+  h3 { margin: 26px 0 8px; }
+
+  .grid { display: grid; gap: 16px; }
+  .grid.three { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .grid.two { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+  .card h3 { margin-top: 0; }
+  .card p { margin: 0; color: var(--muted); }
+  .gcard { border-top: 4px solid var(--c); }
+  .gcard .tag { color: var(--c); font-weight: 600; display: block; margin-bottom: 6px; }
+
+  ol.steps { padding-left: 0; list-style: none; counter-reset: s; }
+  ol.steps li { counter-increment: s; position: relative; padding: 4px 0 14px 46px; }
+  ol.steps li::before {
+    content: counter(s); position: absolute; left: 0; top: 0; width: 32px; height: 32px;
+    border-radius: 50%; background: var(--pac); color: #1a1500; font-weight: 700;
+    display: grid; place-items: center;
+  }
+
+  table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 12px; overflow: hidden; }
+  th, td { text-align: left; padding: 11px 16px; border-bottom: 1px solid var(--line); }
+  th { background: var(--panel-2); font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+  tr:last-child td { border-bottom: none; }
+  .table-scroll { overflow-x: auto; }
+
+  pre { background: #07071a; border: 1px solid var(--line); border-radius: 10px; padding: 16px; overflow-x: auto; font-size: 0.9rem; }
+  ul.clean { padding-left: 20px; }
+  ul.clean li { margin-bottom: 6px; }
+
+  .note { background: var(--panel-2); border-left: 4px solid var(--pac); padding: 12px 16px; border-radius: 0 10px 10px 0; color: var(--muted); margin: 18px 0; }
+
+  footer { padding: 40px 0 60px; text-align: center; color: var(--muted); border-top: 1px solid var(--line); font-size: 0.9rem; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a href="#about">About</a>
+    <a href="#goal">Goal</a>
+    <a href="#controls">Controls</a>
+    <a href="#soul-transfer">Soul Transfer</a>
+    <a href="#ghosts">Ghosts</a>
+    <a href="#pacman">Pac-Man AI</a>
+    <a href="#run">Run It</a>
+    <a href="#under-the-hood">Under the Hood</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="pacrow" aria-hidden="true">
+      <span class="pac"></span>
+      <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      <span class="ghost" style="--c:var(--red)"></span>
+      <span class="ghost" style="--c:var(--orange)"></span>
+      <span class="ghost" style="--c:var(--cyan)"></span>
+      <span class="ghost" style="--c:var(--pink)"></span>
+    </div>
+    <h1>The Soul of <span>Pac-Man</span></h1>
+    <p class="tagline">
+      Pac-Man flipped. You control the ghosts, and Pac-Man is the one running the maze.
+      Corner him before he eats every dot, but watch out: his soul jumps from body to body.
+    </p>
+    <div class="badges">
+      <span class="badge">Python 3</span>
+      <span class="badge">Pygame</span>
+      <span class="badge">Single file</span>
+      <span class="badge">Keyboard</span>
+      <span class="badge">AI opponent</span>
+    </div>
+    <a class="cta" href="https://cloudbv.itch.io/the-soul-of-pacman">Play on itch.io</a><br>
+    <figure class="shot">
+      <img src="screenshot.png"
+           onerror="this.closest('figure').style.display='none'"
+           alt="Screenshot: a blue maze full of yellow dots, four colored ghosts, Pac-Man, a blast ring and the hint banner"
+           width="315" height="250">
+      <figcaption>A soul blast ring bursting from the maze, with the HUD along the bottom.</figcaption>
+    </figure>
+  </div>
+</header>
+
+<main>
+
+<section id="about">
+  <div class="wrap">
+    <h2>About this project</h2>
+    <p class="lead">A role-reversal take on a classic, with a mechanic of its own.</p>
+    <p>
+      You steer one of four ghosts around a 29×23 maze while the other three move on their own AI.
+      Pac-Man plays himself: he hunts for dots, runs from ghosts that get close, and every ten steps
+      his soul leaps into the ghost farthest from him, leaving his old body behind as a corpse.
+      Reading where he'll go next, and where he'll jump, is the whole game.
+    </p>
+    <div class="grid three" style="margin-top:20px">
+      <div class="card"><h3>Be the ghost</h3><p>Switch between four ghosts on the fly and use their different AI personalities to trap Pac-Man.</p></div>
+      <div class="card"><h3>Soul transfers</h3><p>Pac-Man possesses a distant ghost every 10 steps. The blast can take down another ghost nearby.</p></div>
+      <div class="card"><h3>Combos</h3><p>Chain transfers within a few seconds to build a combo multiplier and a bigger score.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="goal">
+  <div class="wrap">
+    <h2>Goal</h2>
+    <p class="lead">Two ways the game ends.</p>
+    <div class="grid two">
+      <div class="card"><h3>You win</h3><p>A ghost lands on Pac-Man's tile (or Pac-Man steps onto a ghost). The screen shows <em>you caught him!</em></p></div>
+      <div class="card"><h3>Pac-Man wins</h3><p>Every dot on the board is eaten. The screen shows <em>pac-man wins!</em></p></div>
+    </div>
+    <div class="note">
+      Ghosts also eat dots as they walk over them, so your own moves count against the dot total too.
+      Hunting efficiently matters.
+    </div>
+  </div>
+</section>
+
+<section id="controls">
+  <div class="wrap">
+    <h2>Controls</h2>
+    <p class="lead">Keyboard only.</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Key</th><th>Action</th></tr></thead>
+        <tbody>
+          <tr><td><code>1</code> – <code>4</code></td><td>Take control of that ghost (the number is shown under each ghost)</td></tr>
+          <tr><td>Arrow keys</td><td><strong>Tap</strong> to move your ghost one tile in that direction</td></tr>
+          <tr><td><code>R</code></td><td>Restart</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul class="clean" style="margin-top:16px">
+      <li>Your ghost moves one step per tap, and faster than the AI ghosts, so tap rather than hold.</li>
+      <li>Switching ghosts adds a short 0.3 second delay before the new ghost will move.</li>
+      <li>You can't walk through the other ghosts or through corpses.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="soul-transfer">
+  <div class="wrap">
+    <h2>Soul transfer</h2>
+    <p class="lead">The mechanic that makes it more than a chase.</p>
+    <ol class="steps">
+      <li><strong>Countdown.</strong> After every 10 steps Pac-Man takes, his soul jumps. The bar in the HUD fills up, and for the last 4 steps it turns red and Pac-Man flashes red as a warning.</li>
+      <li><strong>Possession.</strong> He jumps into the ghost that is <em>farthest</em> from him, but only if that ghost is more than 3 tiles away. He takes over its tile.</li>
+      <li><strong>Corpses.</strong> His old body stays behind as a corpse. If another ghost is within 5 tiles of the blast, the closest one is also knocked out and becomes a corpse.</li>
+      <li><strong>Revival.</strong> Each corpse counts down five Pac-Man moves, then comes back as a ghost on the same tile.</li>
+      <li><strong>Score.</strong> Each transfer adds a combo count multiplied by 100 points. The combo resets if about three seconds pass without another transfer.</li>
+    </ol>
+    <div class="note">
+      If the ghost you were controlling gets possessed or knocked out, control returns to the first ghost in the list.
+    </div>
+  </div>
+</section>
+
+<section id="ghosts">
+  <div class="wrap">
+    <h2>Ghost personalities</h2>
+    <p class="lead">The three ghosts you aren't controlling each behave differently.</p>
+    <div class="grid two">
+      <div class="card gcard" style="--c:var(--red)">
+        <span class="tag">Ghost 1 · Aggressive</span>
+        <p>Takes the shortest path to Pac-Man about 90% of the time.</p>
+      </div>
+      <div class="card gcard" style="--c:var(--orange)">
+        <span class="tag">Ghost 2 · Patrol</span>
+        <p>Wanders along its current direction, but locks on and chases when Pac-Man comes within 5 tiles.</p>
+      </div>
+      <div class="card gcard" style="--c:var(--cyan)">
+        <span class="tag">Ghost 3 · Ambush</span>
+        <p>Aims for the spot four tiles ahead of Pac-Man's current heading, to cut him off.</p>
+      </div>
+      <div class="card gcard" style="--c:var(--pink)">
+        <span class="tag">Ghost 4 · Random</span>
+        <p>Chases about 40% of the time and moves randomly the rest, which makes it hard to predict.</p>
+      </div>
+    </div>
+    <p style="color:var(--muted)">AI ghosts speed up slightly when they are all more than 10 tiles from Pac-Man.</p>
+  </div>
+</section>
+
+<section id="pacman">
+  <div class="wrap">
+    <h2>Pac-Man's AI</h2>
+    <p class="lead">He isn't just wandering.</p>
+    <ul class="clean">
+      <li><strong>Flee mode:</strong> when any ghost is within 8 tiles, he picks the move that puts the most maze distance between himself and all ghosts, with a bonus for grabbing a dot and a penalty for reversing.</li>
+      <li><strong>Hunt mode:</strong> otherwise he heads for the nearest dot using breadth-first search, avoiding ghost tiles.</li>
+      <li><strong>Never steps onto a ghost</strong> if he has any safe move.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="run">
+  <div class="wrap">
+    <h2>Run it</h2>
+    <p class="lead">You need Python 3 and Pygame.</p>
+<pre><code>pip install pygame
+python3 main.py</code></pre>
+    <p>The window is 812 × 724 pixels. You can also play it on <a href="https://cloudbv.itch.io/the-soul-of-pacman">itch.io</a>.</p>
+  </div>
+</section>
+
+<section id="under-the-hood">
+  <div class="wrap">
+    <h2>Under the hood</h2>
+    <p class="lead">Everything lives in one Python file.</p>
+    <ul class="clean">
+      <li><strong>Maze:</strong> a 29×23 layout of walls and open tiles. Helper functions like <code>passable()</code> and <code>is_wall()</code> keep movement checks simple.</li>
+      <li><strong>Pathfinding:</strong> <code>bfs_next()</code> finds the next step toward a target, <code>bfs_dist_map()</code> measures maze distance from a ghost, and <code>nearest_dot_pos()</code> finds the closest dot.</li>
+      <li><strong>AI:</strong> <code>pacman_step()</code> handles flee and hunt, and <code>ai_ghost_step()</code> picks the behavior from each ghost's personality.</li>
+      <li><strong>Soul transfer:</strong> <code>try_soul_transfer()</code> picks the farthest ghost, spawns corpses, scores the combo and triggers the blast effect.</li>
+      <li><strong>Game state:</strong> all state lives in one dict created by <code>new_game()</code>, so restarting is just building a new one.</li>
+      <li><strong>Effects:</strong> blast rings, particles and screen shake make each transfer feel punchy.</li>
+      <li><strong>Async loop:</strong> the main loop is <code>async</code> with <code>await asyncio.sleep(0)</code>, which keeps it compatible with browser builds such as pygbag.</li>
+    </ul>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    The Soul of Pac-Man · Built with Python &amp; Pygame ·
+    <a href="https://cloudbv.itch.io/the-soul-of-pacman">itch.io</a>
+  </div>
+</footer>
+
+</body>
+</html>
