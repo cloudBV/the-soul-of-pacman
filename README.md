@@ -2,6 +2,8 @@
 
 Pac-Man, flipped. You control the ghosts and hunt an AI-controlled Pac-Man through the maze. Catch him before he eats every dot, but every 10 steps his soul jumps into another ghost's body.
 
+**Project page:** https://cloudbv.github.io/the-soul-of-pacman/
+
 **Play on itch.io:** https://cloudbv.itch.io/the-soul-of-pacman
 
 ![Screenshot](screenshot.png)
